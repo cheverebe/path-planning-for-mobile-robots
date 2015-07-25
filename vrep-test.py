@@ -76,10 +76,20 @@ if (not ret == vrep.simx_return_ok):
     print('Failed to retrieve handle for ResizableFloor_1_5')
     sys.exit(1)
 ret, pos = vrep.simxGetObjectPosition(clientID, handle, -1, vrep.simx_opmode_oneshot_wait)
-target = Target(Position([pos[0], pos[1]]), .2)
+target = Target(Position([pos[0], pos[1]]), .5)
+
+#-----------------FINDING OBSTACLES
+ret, handle = vrep.simxGetObjectHandle(clientID, 'Tree', vrep.simx_opmode_oneshot_wait)
+if (not ret == vrep.simx_return_ok):
+    print('Failed to retrieve handle for Tree')
+    sys.exit(1)
+ret, pos = vrep.simxGetObjectPosition(clientID, handle, -1, vrep.simx_opmode_oneshot_wait)
+obstacle = Obstacle(Position([pos[0], pos[1]]))
+obstacles = [obstacle]
+map = Map(obstacles)
 
 #---------------CREATING TREE
-rrt = RRT(initial_state, target, primitives())
+rrt = RRT(initial_state, target, primitives(), map)
 rrt.grow(1200)
 rrt.plot()
 path = rrt.get_solution()

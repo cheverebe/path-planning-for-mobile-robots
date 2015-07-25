@@ -46,13 +46,14 @@ class Target(object):
             ax.plot(x, y, marker='o', color=color)
 
 class RRT(object):
-    def __init__(self, initial_state, target, primitives):
+    def __init__(self, initial_state, target, primitives, map):
         self.initialState = initial_state
         self.droneCount = initial_state.count()
         self.states = [initial_state]
         self.target = target
         self.primitives = primitives
         self.random_points = []
+        self.map = map
 
     def statesInTarget(self):
         statesRes = []
@@ -78,6 +79,11 @@ class RRT(object):
                 self.states.append(q_new)
 
     def collisionFree(self, q_nearest, q_new):
+        for i in range(self.droneCount):
+            old_pos = q_nearest.positions[i]
+            new_pos = q_new.positions[i]
+            if self.map.colides(old_pos,new_pos):
+                return False
         return True
 
     def sample_free(self):
@@ -147,6 +153,7 @@ class RRT(object):
         random_points_color = ['k'] * len(random_points_X)
         ax.scatter(random_points_X, random_points_Y, c=random_points_color)
         self.target.plot(ax)
+        self.map.plot(ax)
         plt.show()
 
     def get_solution(self):
@@ -161,7 +168,7 @@ class RRT(object):
         return solution
 
     def formationMaintained(self, q_new):
-        distance_threshhold = .3
+        distance_threshhold = .5
 
         pos_leader = q_new.positions[0]
         for position in q_new.positions:
@@ -196,3 +203,40 @@ class Position(object):
 
     def __str__(self):
         return str(self.coordinates)
+
+class Map(object):
+    def __init__(self, obstacles):
+        self.obstacles = obstacles
+
+    def colides(self, pos_orig, pos_dest, safety_radius=.1):
+        for obstacle in self.obstacles:
+            if obstacle.position.distance(pos_dest) < safety_radius + obstacle.radius:
+                return True
+        return False
+
+    def plot(self, ax):
+        for obstacle in self.obstacles:
+            obstacle.plot(ax)
+
+
+class Obstacle(object):
+    def __init__(self, position, radius=.3):
+        self.position = position
+        self.radius = radius
+
+    def plot(self, ax):
+        c = self.position.as_tuple()
+        lx = c[0]-self.radius
+        hx = c[0]+self.radius
+        ly = c[1]-self.radius
+        hy = c[1]+self.radius
+        target_lines = [((lx, hy), (lx, ly)), ((lx, hy), (hx, hy)), ((hx, hy), (hx, ly)),
+                        ((lx, ly), (hx, ly))]
+        for line in target_lines:
+            n_pos = line[0]
+            p_pos = line[1]
+
+            DATA = (n_pos, p_pos)
+            (x, y) = zip(*DATA)
+            color = 'k'
+            ax.plot(x, y, marker='+', color=color)
