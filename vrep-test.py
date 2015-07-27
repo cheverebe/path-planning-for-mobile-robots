@@ -83,9 +83,18 @@ ret, handle = vrep.simxGetObjectHandle(clientID, 'Tree', vrep.simx_opmode_onesho
 if (not ret == vrep.simx_return_ok):
     print('Failed to retrieve handle for Tree')
     sys.exit(1)
-ret, pos = vrep.simxGetObjectPosition(clientID, handle, -1, vrep.simx_opmode_oneshot_wait)
-obstacle = Obstacle(Position([pos[0], pos[1]]))
-obstacles = [obstacle]
+trees = -1
+obstacles = []
+while ret == vrep.simx_return_ok:
+    ret, pos = vrep.simxGetObjectPosition(clientID, handle, -1, vrep.simx_opmode_oneshot_wait)
+    obstacle_pos = Position([pos[0], pos[1]])
+    obstacle = Obstacle(obstacle_pos)
+    obstacles.append(obstacle)
+
+    trees += 1
+    qid = "Tree#%d" % trees
+    ret, handle = vrep.simxGetObjectHandle(clientID, qid, vrep.simx_opmode_oneshot_wait)
+
 map = Map(obstacles)
 
 #---------------CREATING TREE

@@ -1,0 +1,8 @@
+
+- que no se choquen---collisionFree distance > 2*radio
+- choose the best solution (area coverage)
+- calculate si esta en el area solucion al crearlo
+- una vez que estamos en el area tirar puntos dentro del area
+- checkear que los puntos random no esten en el C_obj
+
+-start stop desde api
