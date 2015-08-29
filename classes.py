@@ -61,7 +61,7 @@ class RRT(object):
 
     def coverage(self, state):
         grid_precision = 10
-        coverage_radius = .2
+        coverage_radius = .3
         total = 0
         lx = self.target.lx
         ly = self.target.ly
@@ -142,7 +142,7 @@ class RRT(object):
 
         fig, ax = plt.subplots()
 
-        sit = self.statesInTarget()
+        sit = [s[0] for s in self.statesInTarget()]
         for state in self.states:
             state = state[0]
             parent = state.parent
@@ -154,7 +154,10 @@ class RRT(object):
                     lines.append([n_pos, p_pos])
                     DATA = (n_pos, p_pos)
                     (x, y) = zip(*DATA)
-                    color = 'm' if state in sit else color_samples[i % len(color_samples)]
+                    if state in sit:
+                        color = 'm'
+                    else:
+                        color = color_samples[i % len(color_samples)]
                     ax.plot(x, y, marker='o', color=color)
 
         random_points_X = [point.as_tuple()[0] for point in self.random_points]
@@ -174,6 +177,7 @@ class RRT(object):
             if coverage > max_coverage:
                 max_coverage = coverage
                 state = state[0]
+                solution = []
                 while state:
                     solution.append(state)
                     state = state.parent
@@ -182,7 +186,7 @@ class RRT(object):
 
     def formationMaintained(self, q_new):
         distance_threshhold = .7
-        quad_radius = .2
+        quad_radius = .3
         if len(q_new.positions) <= 1:
             return True
 
