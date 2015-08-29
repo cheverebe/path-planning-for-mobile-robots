@@ -20,6 +20,9 @@ random.seed()
 
 
 def run(path, handles):
+    files = []
+    for i in range(len(handles)):
+        files.append(open('path_%d.csv' % i, 'w'))
     for state in path:
         for i in range(len(handles)):
             handle = handles[i]
@@ -37,11 +40,15 @@ def run(path, handles):
             new_pos[0] = state.positions[i].as_tuple()[0]
             new_pos[1] = state.positions[i].as_tuple()[1]
 
+            files[i].write(state.positions[i].as_vrep_path_point())
+
             ret = vrep.simxSetObjectPosition(clientID, handle, -1, new_pos, vrep.simx_opmode_oneshot_wait)
             if (not ret == vrep.simx_return_ok):
                 print('Failed to set position for Quadricopter_target')
                 sys.exit(1)
 
+    for i in range(len(handles)):
+        files[i].close()
 
 # check if client connection successful
 if clientID == -1:
@@ -99,7 +106,7 @@ map = Map(obstacles)
 
 #---------------CREATING TREE
 rrt = RRT(initial_state, target, primitives(), map)
-rrt.grow(1200)
+rrt.grow(1500)
 rrt.plot()
-path = rrt.get_solution()
+path = rrt.solution()
 run(path, handles)

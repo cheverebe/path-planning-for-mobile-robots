@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 import random
 import numpy as np
-import matplotlib
-from matplotlib import collections  as mc
 import matplotlib.pyplot as plt
-import pylab as pl
 
 distance_factor = .03
 
@@ -49,24 +46,37 @@ class RRT(object):
     def __init__(self, initial_state, target, primitives, map):
         self.initialState = initial_state
         self.droneCount = initial_state.count()
-        self.states = [initial_state]
         self.target = target
         self.primitives = primitives
         self.random_points = []
         self.map = map
+        self.states = [(initial_state, self.coverage(initial_state))]
 
     def statesInTarget(self):
         statesRes = []
         for state in self.states:
-            # print(state)
-            in_target = True
-            # print(state.positions)
-            for position in state.positions:
-                in_target = in_target and self.target.check(position)
-            # print(in_target)
-            if in_target:
+            if state[1] > 0: #has coverage
                 statesRes.append(state)
         return statesRes
+
+    def coverage(self, state):
+        grid_precision = 10
+        coverage_radius = .2
+        total = 0
+        lx = self.target.lx
+        ly = self.target.ly
+        hx = self.target.hx
+        hy = self.target.hy
+        for i in range(grid_precision):
+            x = ((hx - lx) / grid_precision) * i + lx
+            for j in range(grid_precision):
+                y = ((hy - ly) / grid_precision) * i + ly
+                point = Position([x,y])
+                for position in state.positions:
+                    if position.distance(point) < coverage_radius:
+                        total += 1
+                        break
+        return float(total) / (grid_precision * grid_precision)
 
     def grow(self, max_iter):
         for iteration in range(max_iter):
@@ -76,7 +86,7 @@ class RRT(object):
             if self.collisionFree(q_nearest, q_new) and self.formationMaintained(q_new):
                 for point in q_rand:
                     self.random_points.append(point)
-                self.states.append(q_new)
+                self.states.append((q_new, self.coverage(q_new)))
 
     def collisionFree(self, q_nearest, q_new):
         for i in range(self.droneCount):
@@ -92,7 +102,7 @@ class RRT(object):
 
     def nearest(self, q_rand):
         # default
-        nearest = self.states[0]
+        nearest = self.states[0][0]
         min_dist = 0
         for i in range(self.droneCount):
             position = nearest.positions[i]
@@ -100,6 +110,7 @@ class RRT(object):
             min_dist += position.distance(rand_position)
         # loop
         for state in self.states:
+            state = state[0]
             total_dist = 0
             for i in range(self.droneCount):
                 position = state.positions[i]
@@ -128,14 +139,12 @@ class RRT(object):
     def plot(self):
         color_samples = ['r', 'g', 'b', 'c', 'm', 'y']
         lines = []
-        colors = []
-        pointsx = []
-        pointsy = []
 
         fig, ax = plt.subplots()
 
         sit = self.statesInTarget()
         for state in self.states:
+            state = state[0]
             parent = state.parent
             if parent:
                 for i in range(self.droneCount):
@@ -156,24 +165,33 @@ class RRT(object):
         self.map.plot(ax)
         plt.show()
 
-    def get_solution(self):
+    def solution(self):
         solution = []
         sit = self.statesInTarget()
-        if len(sit)>0:
-            state = sit[0]
-            while state:
-                solution.append(state)
-                state = state.parent
-            solution = reversed(solution)
+        max_coverage = 0
+        for state in sit:
+            coverage = state[1]
+            if coverage > max_coverage:
+                max_coverage = coverage
+                state = state[0]
+                while state:
+                    solution.append(state)
+                    state = state.parent
+        solution = list(reversed(solution))
         return solution
 
     def formationMaintained(self, q_new):
-        distance_threshhold = .5
+        distance_threshhold = .7
+        quad_radius = .2
+        if len(q_new.positions) <= 1:
+            return True
 
-        pos_leader = q_new.positions[0]
-        for position in q_new.positions:
-            if pos_leader.distance(position) > distance_threshhold:
-                return False
+        for i in range(len(q_new.positions)-1):
+            for j in range(i+1,len(q_new.positions)):
+                pos = q_new.positions[i]
+                pos2 = q_new.positions[j]
+                if pos2.distance(pos) > distance_threshhold or pos2.distance(pos) < quad_radius :
+                    return False
         return True
 
 
@@ -201,6 +219,9 @@ class Position(object):
         b = np.array(p2.as_tuple())
         return np.linalg.norm(a - b)
 
+    def as_vrep_path_point(self):
+        return "%d,%d,0.000000,0.000000,90.000000,90.000000,1.000000,15,0.500000,0.500000,0.000000,0,0.000000,0.000000,0.000000,0.000000\n" % (self.as_tuple()[0],self.as_tuple()[1])
+
     def __str__(self):
         return str(self.coordinates)
 
@@ -220,7 +241,7 @@ class Map(object):
 
 
 class Obstacle(object):
-    def __init__(self, position, radius=.3):
+    def __init__(self, position, radius=.2):
         self.position = position
         self.radius = radius
 
